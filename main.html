@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Звонок с неизвестного номера</title>
+<style>
+  body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #1a1a2e;
+    color: #eee;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+
+  #app {
+    width: 340px;
+    text-align: center;
+  }
+
+  #street {
+    padding: 40px 20px;
+  }
+
+  #street h1 {
+    font-size: 18px;
+    font-weight: normal;
+    color: #aaa;
+  }
+
+  button {
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  #callBtn {
+    margin-top: 30px;
+    padding: 14px 28px;
+    background: #2ecc71;
+    border: none;
+    border-radius: 30px;
+    color: #111;
+    font-size: 15px;
+  }
+
+  .hidden {
+    display: none;
+  }
+
+  #incoming, #call, #ending {
+    background: #16213e;
+    border-radius: 12px;
+    padding: 24px;
+  }
+
+  #incoming h2, #call h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+  }
+
+  #incoming p, #call p {
+    color: #888;
+    font-size: 12px;
+    margin: 0 0 20px;
+  }
+
+  .call-actions {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 20px;
+  }
+
+  .call-actions button {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+  }
+
+  #acceptBtn { background: #2ecc71; }
+  #declineBtn { background: #e74c3c; }
+
+  #dialogText {
+    background: #0f3460;
+    padding: 14px;
+    border-radius: 8px;
+    text-align: left;
+    font-size: 14px;
+    line-height: 1.4;
+    margin-bottom: 16px;
+  }
+
+  .choice-btn {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: #0f3460;
+    color: #eee;
+    border: 1px solid #2a4a7f;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+  .choice-btn:hover { background: #14406e; }
+
+  #ending h2 { margin-top: 0; }
+  #ending p { font-size: 14px; line-height: 1.5; color: #ccc; }
+
+  #restartBtn {
+    margin-top: 16px;
+    padding: 10px 20px;
+    background: #eee;
+    color: #111;
+    border: none;
+    border-radius: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="street">
+    <h1>поздний вечер, ты стоишь на улице...</h1>
+    <button id="callBtn">📞 Телефон звонит</button>
+  </div>
+
+  <div id="incoming" class="hidden">
+    <h2>Служба Безопасности Банка</h2>
+    <p>+7 900 XXX-XX-XX</p>
+    <div class="call-actions">
+      <button id="declineBtn">✕</button>
+      <button id="acceptBtn">✓</button>
+    </div>
+  </div>
+
+  <div id="call" class="hidden">
+    <h2>Служба Безопасности Банка</h2>
+    <p>звонок идёт...</p>
+    <div id="dialogText"></div>
+    <div id="choices"></div>
+  </div>
+
+  <div id="ending" class="hidden">
+    <h2 id="endTitle"></h2>
+    <p id="endStory"></p>
+    <button id="restartBtn">Ещё раз</button>
+  </div>
+
+</div>
+
+<script>
+// Один сценарий разговора. Дерево простое: несколько узлов,
+// каждый узел - реплика + варианты ответа, которые ведут
+// к следующему узлу или к одной из двух концовок.
+const NODES = {
+  start: {
+    text: "Здравствуйте! Это служба безопасности банка. Зафиксирована подозрительная операция на 48 700 рублей. Это вы её совершали?",
+    choices: [
+      { text: "Нет! Что мне делать?!", next: "pressure" },
+      { text: "А вы вообще кто?", next: "suspicious" },
+      { text: "Спишите ещё раз, мне как раз есть кому долг отдавать.", next: "end_win" }
+    ]
+  },
+  pressure: {
+    text: "Чтобы отменить операцию прямо сейчас, продиктуйте код из смс, которая вам придёт.",
+    choices: [
+      { text: "Хорошо, диктую код...", next: "end_lose" },
+      { text: "Погодите, а зачем банку мой код?", next: "end_win" }
+    ]
+  },
+  suspicious: {
+    text: "Отдел безопасности, сотрудник номер 4471. Чтобы отменить операцию, продиктуйте код из смс.",
+    choices: [
+      { text: "Хорошо, диктую...", next: "end_lose" },
+      { text: "Настоящий банк код по телефону не спрашивает. До свидания.", next: "end_win" }
+    ]
+  }
+};
+
+const ENDINGS = {
+  end_win: {
+    title: "🎉 Ты не попался",
+    story: "Ты не стал называть код и положил трубку. Позже в банке подтвердили: звонок был мошенническим."
+  },
+  end_lose: {
+    title: "💸 Увы, тебя обманули",
+    story: "Ты продиктовал код из смс. Через минуту пришло сообщение о списании денег со счёта."
+  }
+};
+
+let currentNode = "start";
+
+const streetEl = document.getElementById("street");
+const incomingEl = document.getElementById("incoming");
+const callEl = document.getElementById("call");
+const endingEl = document.getElementById("ending");
+
+document.getElementById("callBtn").addEventListener("click", () => {
+  streetEl.classList.add("hidden");
+  incomingEl.classList.remove("hidden");
+});
+
+document.getElementById("declineBtn").addEventListener("click", () => {
+  incomingEl.classList.add("hidden");
+  streetEl.classList.remove("hidden");
+});
+
+document.getElementById("acceptBtn").addEventListener("click", () => {
+  incomingEl.classList.add("hidden");
+  callEl.classList.remove("hidden");
+  currentNode = "start";
+  renderNode();
+});
+
+function renderNode() {
+  const node = NODES[currentNode];
+  document.getElementById("dialogText").textContent = node.text;
+
+  const choicesWrap = document.getElementById("choices");
+  choicesWrap.innerHTML = "";
+  node.choices.forEach(choice => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn";
+    btn.textContent = choice.text;
+    btn.addEventListener("click", () => onChoose(choice.next));
+    choicesWrap.appendChild(btn);
+  });
+}
+
+function onChoose(next) {
+  if (ENDINGS[next]) {
+    showEnding(next);
+  } else {
+    currentNode = next;
+    renderNode();
+  }
+}
+
+function showEnding(key) {
+  const ending = ENDINGS[key];
+  callEl.classList.add("hidden");
+  document.getElementById("endTitle").textContent = ending.title;
+  document.getElementById("endStory").textContent = ending.story;
+  endingEl.classList.remove("hidden");
+}
+
+document.getElementById("restartBtn").addEventListener("click", () => {
+  endingEl.classList.add("hidden");
+  streetEl.classList.remove("hidden");
+});
+</script>
+</body>
+</html>
