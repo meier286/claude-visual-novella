@@ -13,8 +13,8 @@
 ## 🚀 Как запустить
 1. Клонируйте репозиторий:
    ```bash
-   git clone https://github.com/[ваш-логин]/[имя-репо].git
-   cd [имя-репо]
+   git clone https://github.com/meier286/claude-visual-novella.git
+   cd claude-visual-novella
 
 2. Установите зависимости (локальный веб-сервер):
    ```bash
